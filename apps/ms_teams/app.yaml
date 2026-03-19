@@ -1,0 +1,44 @@
+# apps/ms_teams/app.yaml
+# MS Teams CASB activity definitions.
+#
+# To add a new activity:
+#   1. Add an entry under 'activities' below
+#   2. Implement _do_{activity_name}(page, result, **kwargs) in activities.py
+#   That's all.
+
+name: MS Teams
+app_id: ms_teams
+account_types: [personal, corporate]
+app_url: https://teams.live.com/v2/
+
+# What fast.log lines must contain for a match (ALL keywords required)
+log_match:
+  keywords:
+    - ms_teams
+    - post
+    - "app-activity for casb"
+
+# What the CASB AlertWindow popup must show
+expected:
+  application: ms_teams
+  activity: post
+  blocked_by: casb
+
+# Activities to test — tc_label shown in report, nav shown in report header
+# activity_name must match _do_{activity_name} method in activities.py
+activities:
+  post:
+    tc_label: TC1
+    nav: "Sign in → Click Chat tab → Send text to recipient"
+
+  meet_now_post:
+    tc_label: TC2
+    nav: "Sign in → Meet Now → Start meeting → Chat tab → Post"
+
+  forward:
+    tc_label: TC3
+    nav: "Sign in → Chat → 3 dots on message → Forward → Send"
+
+  reply:
+    tc_label: TC4
+    nav: "Sign in → Chat → 3 dots on message → Reply → Send"

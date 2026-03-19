@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CASB Results — {% block title %}{% endblock %}</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f0f2f5;
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 220px;
+  min-height: 100vh;
+  background: #1a8fe3;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.sidebar-title {
+  background: #0d5fa3;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 18px 16px;
+  text-transform: uppercase;
+}
+
+.sidebar-section {
+  color: #d0eaff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 18px 16px 8px;
+}
+
+.sidebar a {
+  display: block;
+  color: #fff;
+  text-decoration: none;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-left: 3px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.sidebar a:hover, .sidebar a.active {
+  background: #0d5fa3;
+  border-left-color: #fff;
+}
+
+.sidebar-nav-btn {
+  display: block;
+  margin: 6px 12px;
+  padding: 9px 12px;
+  background: #fff;
+  color: #1a8fe3;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sidebar-nav-btn:hover {
+  background: #e0f0ff;
+}
+
+/* ── Main ── */
+.main {
+  flex: 1;
+  padding: 28px 32px;
+  overflow-x: auto;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.page-header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a2540;
+}
+
+.back-btn {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.back-btn:hover { background: #f0f0f0; }
+
+/* ── Stat Cards ── */
+.stat-row {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.stat-card {
+  border-radius: 6px;
+  padding: 14px 24px;
+  min-width: 140px;
+  text-align: center;
+  color: #fff;
+}
+
+.stat-card .val {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.stat-card .lbl {
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 4px;
+  letter-spacing: 0.5px;
+}
+
+.stat-pass  { background: #2e7d32; }
+.stat-fail  { background: #c62828; }
+.stat-total { background: #1565c0; }
+.stat-pct   { background: #e65100; }
+
+/* ── Table ── */
+.section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a2540;
+  margin: 20px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #1a8fe3;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  font-size: 13px;
+}
+
+th {
+  background: #dbeeff;
+  color: #1a2540;
+  font-weight: 700;
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 2px solid #b3d4f0;
+  white-space: nowrap;
+}
+
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #eef2f7;
+  vertical-align: top;
+}
+
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #f5fbff; }
+
+/* ── Badges ── */
+.badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.badge-pass  { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+.badge-fail  { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+.badge-warn  { background: #fff8e1; color: #e65100; border: 1px solid #ffcc80; }
+.badge-skip  { background: #f3f4f6; color: #555;    border: 1px solid #ccc; }
+.badge-yes   { background: #e8f5e9; color: #2e7d32; }
+.badge-no    { background: #ffebee; color: #c62828; }
+
+/* ── Action Buttons ── */
+.btn {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s;
+}
+
+.btn:hover { opacity: 0.85; }
+.btn-blue  { background: #1a8fe3; color: #fff; }
+.btn-green { background: #2e7d32; color: #fff; }
+.btn-red   { background: #c62828; color: #fff; }
+.btn-gray  { background: #607d8b; color: #fff; }
+.btn-outline { background: #fff; color: #1a8fe3; border: 1px solid #1a8fe3; }
+
+/* ── Misc ── */
+.run-id-mono {
+  font-family: 'Consolas', monospace;
+  font-size: 12px;
+  color: #555;
+}
+
+.sig-id {
+  font-family: 'Consolas', monospace;
+  background: #e3f2fd;
+  color: #0d47a1;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+  margin: 1px;
+  display: inline-block;
+}
+
+.fail-reason {
+  font-size: 11px;
+  color: #c62828;
+  margin-top: 3px;
+}
+
+.empty-state {
+  text-align: center;
+  color: #999;
+  padding: 40px;
+  font-size: 14px;
+}
+
+.file-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.file-list li a {
+  display: inline-block;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #1a8fe3;
+  text-decoration: none;
+  font-family: 'Consolas', monospace;
+}
+
+.file-list li a:hover { background: #e3f2fd; }
+</style>
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-title">CASB Results</div>
+
+  <div class="sidebar-section">Navigation</div>
+  <a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}active{% endif %}">
+    📋 All Runs
+  </a>
+
+  <div class="sidebar-section">MS Teams</div>
+  <a href="{{ url_for('index') }}?app=ms_teams" class="sidebar-nav-btn">MS TEAMS</a>
+
+</div>
+
+<div class="main">
+  {% block content %}{% endblock %}
+</div>
+
+</body>
+</html>

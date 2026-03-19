@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}All Runs<script>
+function toggleCfg(id) {
+  var row = document.getElementById(id);
+  row.style.display = (row.style.display === 'none' || row.style.display === '') ? 'table-row' : 'none';
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>📊 MS Teams CASB — All Runs</h1>
+</div>
+
+<div class="stat-row">
+  <div class="stat-card stat-total">
+    <div class="val">{{ total_runs }}</div>
+    <div class="lbl">Total Runs</div>
+  </div>
+  <div class="stat-card stat-pass">
+    <div class="val">{{ total_pass }}</div>
+    <div class="lbl">✔ Passed</div>
+  </div>
+  <div class="stat-card stat-fail">
+    <div class="val">{{ total_fail }}</div>
+    <div class="lbl">✘ Failed</div>
+  </div>
+  {% if total_runs > 0 %}
+  <div class="stat-card stat-pct">
+    <div class="val">{{ "%.0f"|format(total_pass / total_runs * 100) }}%</div>
+    <div class="lbl">Pass Rate</div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="section-title">MS Teams {{ runs[0].config.account_type | capitalize if runs and runs[0].config.account_type else "Personal" }} — CASB Results</div>
+
+{% if runs %}
+<table>
+  <thead>
+    <tr>
+      <th>Run ID</th>
+      <th>Timestamp</th>
+      <th>TCs</th>
+      <th>Passed</th>
+      <th>Failed</th>
+      <th>Trigger %</th>
+      <th>Sig IDs</th>
+      <th>SPack</th>
+      <th>Status</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in runs %}
+    <tr style="cursor:pointer" onclick="toggleCfg('cfg-{{ r.run_id }}')">
+      <td class="run-id-mono">{{ r.run_id }}</td>
+      <td>{{ r.timestamp }}</td>
+      <td>{{ r.total }}</td>
+      <td style="color:#2e7d32;font-weight:700">{{ r.passed }}</td>
+      <td style="color:{% if r.failed > 0 %}#c62828{% else %}#2e7d32{% endif %};font-weight:700">{{ r.failed }}</td>
+      <td>
+        <span style="font-weight:700;color:{% if r.passed == r.total and r.total > 0 %}#2e7d32{% else %}#e65100{% endif %}">
+          {{ r.trigger_pct }}
+        </span>
+      </td>
+      <td>
+        {% for sid in r.sig_ids %}
+          <span class="sig-id">{{ sid }}</span>
+        {% else %}
+          <span style="color:#999">—</span>
+        {% endfor %}
+      </td>
+      <td>
+        {% if r.config.spack_version %}
+          <span style="font-family:monospace;font-size:12px;font-weight:700;color:#1b5e20;background:#e8f5e9;padding:2px 8px;border-radius:4px">{{ r.config.spack_version }}</span>
+        {% else %}
+          <span style="color:#999">—</span>
+        {% endif %}
+      </td>
+      <td>
+        <span class="badge {% if r.status == 'PASS' %}badge-pass{% elif r.status == 'FAIL' %}badge-fail{% else %}badge-warn{% endif %}">
+          {{ r.status }}
+        </span>
+      </td>
+      <td style="white-space:nowrap">
+        <a href="{{ url_for('run_detail', run_id=r.run_id) }}" class="btn btn-blue">View</a>
+        {% if r.has_html %}
+        <a href="{{ url_for('view_report', run_id=r.run_id) }}" class="btn btn-gray" target="_blank">HTML</a>
+        {% endif %}
+        <a href="{{ url_for('download_run', run_id=r.run_id) }}" class="btn btn-green">ZIP</a>
+        <form method="post" action="{{ url_for('delete_run', run_id=r.run_id) }}"
+              style="display:inline"
+              onsubmit="return confirm('Delete {{ r.run_id }}?')">
+          <button class="btn btn-red">Delete</button>
+        </form>
+      </td>
+    </tr>
+    <tr id="cfg-{{ r.run_id }}" style="display:none;background:#f8f9ff">
+        <td colspan="10" style="padding:12px 16px">
+          {% set cfg = r.config %}
+          {% if cfg %}
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px 24px">
+            {% if cfg.account_type %}<div><span style="font-size:10px;color:#888;display:block">Account Type</span><span style="font-family:monospace;font-weight:700;color:#1a237e">{{ cfg.account_type }}</span></div>{% endif %}
+            {% if cfg.vos_org %}<div><span style="font-size:10px;color:#888;display:block">VOS Org</span><span style="font-family:monospace;font-weight:700;color:#1a237e">{{ cfg.vos_org }}</span></div>{% endif %}
+            {% if cfg.ssh_host %}<div><span style="font-size:10px;color:#888;display:block">VOS Host</span><span style="font-family:monospace;font-weight:700;color:#1a237e">{{ cfg.ssh_host }}</span></div>{% endif %}
+            {% if cfg.vos_access_policy %}<div><span style="font-size:10px;color:#888;display:block">Access Policy</span><span style="font-family:monospace;font-weight:700;color:#1a237e">{{ cfg.vos_access_policy }}</span></div>{% endif %}
+            {% if cfg.vos_decrypt_policy %}<div><span style="font-size:10px;color:#888;display:block">Decrypt Policy</span><span style="font-family:monospace;font-weight:700;color:#1a237e">{{ cfg.vos_decrypt_policy }}</span></div>{% endif %}
+            {% if cfg.vos_decrypt_rule %}<div><span style="font-size:10px;color:#888;display:block">Decrypt Rule</span><span style="font-family:monospace;font-weight:700;color:#1a237e">{{ cfg.vos_decrypt_rule }}</span></div>{% endif %}
+            {% if cfg.vos_decrypt_profile %}<div><span style="font-size:10px;color:#888;display:block">Decrypt Profile</span><span style="font-family:monospace;font-weight:700;color:#1a237e">{{ cfg.vos_decrypt_profile }}</span></div>{% endif %}
+            {% if cfg.vos_casb_profile %}<div><span style="font-size:10px;color:#888;display:block">CASB Profile</span><span style="font-family:monospace;font-weight:700;color:#1a237e">{{ cfg.vos_casb_profile }}</span></div>{% endif %}
+            {% if cfg.vos_casb_rule %}<div><span style="font-size:10px;color:#888;display:block">CASB Rule</span><span style="font-family:monospace;font-weight:700;color:#1a237e">{{ cfg.vos_casb_rule }}</span></div>{% endif %}
+            {% if cfg.spack_version %}<div style="grid-column:1/-1;border-top:1px solid #e8eaf6;padding-top:8px;margin-top:4px"><span style="font-size:10px;color:#888;display:block">Security Package (SPack)</span><span style="font-family:monospace;font-weight:700;color:#1b5e20;font-size:14px">{{ cfg.spack_version }}{% if cfg.spack_flavor %} · {{ cfg.spack_flavor }}{% endif %}{% if cfg.spack_date %} · Released {{ cfg.spack_date }}{% endif %}</span></div>{% endif %}
+          </div>
+          {% else %}
+          <span style="color:#aaa;font-style:italic;font-size:12px">No config recorded (old run format)</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+  No runs yet. Run the automation script with <code>--server-url</code> to upload results automatically.
+</div>
+{% endif %}
+
+{% endblock %}
