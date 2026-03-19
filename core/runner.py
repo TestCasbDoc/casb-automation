@@ -81,7 +81,7 @@ def load_app(app_id: str):
 # ============================================================
 
 def run_all(app_id: str, account_type: str, browser, script_dir: str,
-            run_navs: set, run_tc_nums: set, config_module):
+            run_navs: dict, config_module):
     """
     Generic test run for any app.
 
@@ -90,7 +90,8 @@ def run_all(app_id: str, account_type: str, browser, script_dir: str,
         account_type  : e.g. "personal", "corporate"
         browser       : Playwright browser/context object
         script_dir    : output folder for this run
-        run_navs      : set of activity names to run e.g. {"post", "forward"}
+        run_navs      : dict of {activity_name: set_of_tc_nums}
+                        e.g. {"post": {1,3}, "share": {1,4}} or {"all": set()}
         config_module : the imported config module (for REPORT_DATA, credentials etc.)
 
     Returns:
@@ -158,15 +159,29 @@ def run_all(app_id: str, account_type: str, browser, script_dir: str,
             tc_label  = meta.get("tc_label", activity_name.upper())
             tc_num    = int(tc_label.replace("TC", "")) if tc_label.startswith("TC") else 0
 
-            # Filter by TC number if specified (e.g. post[1,3,4])
-            if run_tc_nums and tc_num not in run_tc_nums:
-                skipped.append(tc_label)
-                continue
+            # ── Activity + TC filtering ───────────────────────────
+            # run_navs is a dict: {"post": {1,3}, "share": {1,4}} or {"all": set()}
+            # "all" key means run everything — no filtering
+            if "all" not in run_navs:
+                activity_category = meta.get("category", activity_name)
 
-            # Filter by activity name if no TC numbers specified
-            if not run_tc_nums and "all" not in run_navs and activity_name not in run_navs:
-                skipped.append(tc_label)
-                continue
+                # Find which key in run_navs matches this activity
+                matched_key = None
+                if activity_name in run_navs:
+                    matched_key = activity_name
+                elif activity_category in run_navs:
+                    matched_key = activity_category
+
+                # Activity not requested at all → skip
+                if matched_key is None:
+                    skipped.append(tc_label)
+                    continue
+
+                # Activity requested but with specific TC numbers → filter
+                activity_tc_nums = run_navs[matched_key]
+                if activity_tc_nums and tc_num not in activity_tc_nums:
+                    skipped.append(tc_label)
+                    continue
             print(f"\n{'─' * 55}")
             print(f"  {tc_label}: {meta.get('nav', activity_name)}")
             print(f"{'─' * 55}")

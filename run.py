@@ -65,16 +65,75 @@ parser.add_argument("--help", "-h", action="store_true", default=False)
 args, _ = parser.parse_known_args()
 
 if args.help:
-    print("""
+    print(r"""
 =============================================================
   CASB Automation — run.py
 =============================================================
 USAGE:
-  python run.py --applications APP[account_type] --host IP --pwd PWD --ssh-user USER
+  python run.py --applications "MS_Teams" --host IP --pwd PWD --ssh-user USER
 
 EXAMPLES:
-  python run.py --applications "MS_Teams[personal]" --host 172.20.4.5 --pwd versa123 --ssh-user admin
-  python run.py --applications "MS_Teams[personal,corporate]" --host 172.20.4.5 --pwd versa123 --ssh-user admin --activities "post[1]"
+  python run.py --applications "MS_Teams" --host 172.20.4.5 --pwd versa123 --ssh-user admin
+  python run.py --applications "MS_Teams" --account_type personal --host 172.20.4.5 --pwd versa123 --ssh-user admin
+  python run.py --applications "MS_Teams,Instagram" --account_type personal,corporate --host 172.20.4.5 --pwd versa123 --ssh-user admin
+
+ARGUMENTS:
+  --applications      Comma-separated list of apps to test.
+                        MS_Teams
+                          → runs MS_Teams with all account types
+                        MS_Teams,Instagram
+                          → runs both apps with all account types
+
+  --account_type      Comma-separated account type(s).
+                        personal
+                          → applies personal to all apps
+                        personal,corporate
+                          → maps in order: app1=personal, app2=corporate
+                        (if not given, runs all account types from _APP_MAP)
+                        NOTE: if multiple types given, count must match app count
+
+  --host              IP address of the Versa VOS/SSH device  e.g. 172.20.4.5
+
+  --pwd               SSH password for the VOS device  e.g. versa123
+
+  --ssh-user          SSH username for the VOS device  e.g. admin
+
+  --org               VOS organisation name  e.g. ENDTOEND-Tenant-2
+
+  --report-dir        Folder to save JSON/HTML reports
+                        e.g. C:\Users\admin\Downloads\CASB_Reports
+
+  --activities        Which TCs to run. Each activity has its own TC numbers.
+                        all                    → run all activities and all TCs
+                        post                   → run all post TCs (TC1,TC2,TC3,TC4)
+                        post[1]                → run post TC1 only
+                        post[2]                → run post TC2 only
+                        post[1,3]              → run post TC1 and TC3
+                        post[1,2,3,4]          → run all 4 post TCs explicitly
+                        "post[1,3] share[1,4]" → run post TC1,TC3 AND share TC1,TC4
+                        "post share"           → run all TCs for both post and share
+
+  --qosmos            Enable/disable Qosmos appid metadata: True or False
+
+  --send-email        Comma-separated emails to send report after run
+                        e.g. user1@versa-networks.com,user2@versa-networks.com
+
+  --smtp-pwd          Gmail SMTP password (overrides SENDER_GMAIL_APP_PASSWORD in config.py)
+
+  --server-url        CASB results dashboard URL  e.g. http://10.196.3.26:4012
+
+  --access-policy     VOS access policy name  e.g. Default-Policy
+
+  --decrypt-policy    VOS decryption policy name  e.g. Default-Policy
+
+  --decrypt-rule      VOS decryption rule name  e.g. decryption_rule_casb
+
+  --decrypt-profile   VOS decryption profile name  e.g. decrypt_profile
+
+  --casb-profile      VOS CASB profile name  e.g. casb_mobile_test_rule
+
+  --casb-access-policy-rule
+                      VOS CASB access policy rule name  e.g. mobile_test_rule
 
 REGISTERED APPS:
 """)
@@ -125,37 +184,40 @@ for app_id, at_list in parsed_apps:
 
 def _parse_run_navs(activities_arg: str):
     """
-    Convert --activities string to (activity_names set, tc_numbers set).
+    Convert --activities string to a dict of {activity_name: set_of_tc_nums}.
 
-    TC numbers map to app.yaml tc_label values (TC1=1, TC2=2 etc).
-    If tc_numbers is empty, all activities in the name set are run.
+    Each activity has its own set of TC numbers — no merging across activities.
 
     Examples:
-      all              → ({"all"}, set())       run everything
-      post             → ({"post"}, set())      run all post activities
-      post[1]          → ({"post"}, {1})        run only TC1
-      post[1,3,4]      → ({"post"}, {1,3,4})   run TC1, TC3, TC4
-      forward reply    → ({"forward","reply"}, set())
+      all                   → {"all": set()}         run everything
+      post                  → {"post": set()}         run all post TCs
+      post[1]               → {"post": {1}}           run TC1 only
+      post[1,3]             → {"post": {1,3}}         run TC1, TC3
+      post[1,3] share[1,4]  → {"post": {1,3},         run post TC1,TC3
+                                "share": {1,4}}            share TC1,TC4
+      post share            → {"post": set(),         run all TCs for both
+                                "share": set()}
     """
     if not activities_arg or activities_arg.strip().lower() == "all":
-        return {"all"}, set()
+        return {"all": set()}
 
-    navs    = set()
-    tc_nums = set()
+    nav_map = {}
     for part in activities_arg.strip().split():
         m = _re.match(r'^([^\[]+)(?:\[([^\]]+)\])?$', part.strip().lower())
         if m:
             name = m.group(1).strip()
-            if name:
-                navs.add(name)
+            if not name:
+                continue
+            tc_nums = set()
             if m.group(2):
                 for n in m.group(2).split(","):
                     n = n.strip()
                     if n.isdigit():
                         tc_nums.add(int(n))
-    return navs, tc_nums
+            nav_map[name] = tc_nums
+    return nav_map
 
-run_navs, run_tc_nums = _parse_run_navs(args.activities)
+run_navs = _parse_run_navs(args.activities)
 
 
 # ── Apply CLI overrides to config ─────────────────────────────────────────────
@@ -433,7 +495,11 @@ with sync_playwright() as pw:
             print(f"\n{'=' * 55}")
             print(f"  App          : {app_id}")
             print(f"  Account type : {account_type}")
-            print(f"  Activities   : {run_navs}")
+            nav_display = "all" if "all" in run_navs else ", ".join(
+                f"{k}[{','.join(str(n) for n in sorted(v))}]" if v else k
+                for k, v in run_navs.items()
+            )
+            print(f"  Activities   : {nav_display}")
             print(f"{'=' * 55}\n")
 
             # Launch browser (persistent context for cookie persistence)
@@ -468,7 +534,6 @@ with sync_playwright() as pw:
                 browser      = browser,
                 script_dir   = _cfg.SCRIPT_DIR,
                 run_navs     = run_navs,
-                run_tc_nums  = run_tc_nums,
                 config_module= _cfg,
             )
 

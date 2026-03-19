@@ -29,16 +29,20 @@ expected:
 activities:
   post:
     tc_label: TC1
+    category: post
     nav: "Sign in → Click Chat tab → Send text to recipient"
 
   meet_now_post:
     tc_label: TC2
+    category: post
     nav: "Sign in → Meet Now → Start meeting → Chat tab → Post"
 
   forward:
     tc_label: TC3
+    category: post
     nav: "Sign in → Chat → 3 dots on message → Forward → Send"
 
   reply:
     tc_label: TC4
+    category: post
     nav: "Sign in → Chat → 3 dots on message → Reply → Send"
